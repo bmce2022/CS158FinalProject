@@ -53,8 +53,13 @@ public class BaseballCardEvaluator {
         double maxPrice = 655.00;
         
         // Print header
-
-        System.out.println("│ Example  │ Actual Price  │ Predicted Price │   Error    │ Percent Error │");
+        System.out.println("│ Example  │ Actual Price  │ Predicted Price │   Error    │ Percent Error │ Squared Error  │");
+        
+        // Track aggregate metrics
+        double totalSquaredError = 0.0;
+        double totalAbsoluteError = 0.0;
+        double totalPercentError = 0.0;
+        double maxAbsoluteError = 0.0;
         
         int count = 1;
         for (Example example : data.getData()) {
@@ -65,12 +70,34 @@ public class BaseballCardEvaluator {
             double predictedPrice = denormalize(predictedNormalized, minPrice, maxPrice);
             double error = actualPrice - predictedPrice;
             double percentError = Math.abs(error / actualPrice * 100);
+            double squaredError = error * error;
             
-            System.out.printf("│ %8d │ $%11.2f │ $%14.2f │ $%9.2f │ %12.2f%% │%n", 
-                count, actualPrice, predictedPrice, error, percentError);
+            System.out.printf("│ %8d │ $%11.2f │ $%14.2f │ $%9.2f │ %12.2f%% │ $%13.2f │%n", 
+                count, actualPrice, predictedPrice, error, percentError, squaredError);
+            
+            // Accumulate metrics
+            totalSquaredError += squaredError;
+            totalAbsoluteError += Math.abs(error);
+            totalPercentError += percentError;
+            maxAbsoluteError = Math.max(maxAbsoluteError, Math.abs(error));
+            
             count++;
         }
         
+        // Calculate and display aggregate metrics
+        int n = data.getData().size();
+        double mse = totalSquaredError / n;
+        double rmse = Math.sqrt(mse);
+        double mae = totalAbsoluteError / n;
+        double mape = totalPercentError / n;
+        
+        System.out.println("\n=== Performance Metrics ===");
+        System.out.println("Mean Squared Error (MSE):           $" + String.format("%,12.2f", mse));
+        System.out.println("Root Mean Squared Error (RMSE):     $" + String.format("%,12.2f", rmse));
+        System.out.println("Mean Absolute Error (MAE):          $" + String.format("%,12.2f", mae));
+        System.out.println("Mean Absolute Percent Error (MAPE): " + String.format("%13.2f%%", mape));
+        System.out.println("Max Absolute Error:                 $" + String.format("%,12.2f", maxAbsoluteError));
+        System.out.println();
     }
     
     /**
@@ -86,7 +113,7 @@ public class BaseballCardEvaluator {
         
         try (PrintWriter writer = new PrintWriter(new FileWriter(outputFile))) {
             // Write header
-            writer.println("Example,Actual_Price,Predicted_Price,Error,Percent_Error");
+            writer.println("Example,Actual_Price,Predicted_Price,Error,Percent_Error,Squared_Error");
             
             int count = 1;
             for (Example example : data.getData()) {
@@ -97,9 +124,10 @@ public class BaseballCardEvaluator {
                 double predictedPrice = denormalize(predictedNormalized, minPrice, maxPrice);
                 double error = actualPrice - predictedPrice;
                 double percentError = Math.abs(error / actualPrice * 100);
+                double squaredError = error * error;
                 
-                writer.printf("%d,%.2f,%.2f,%.2f,%.2f%n", 
-                    count, actualPrice, predictedPrice, error, percentError);
+                writer.printf("%d,%.2f,%.2f,%.2f,%.2f,%.2f%n", 
+                    count, actualPrice, predictedPrice, error, percentError, squaredError);
                 count++;
             }
             
